@@ -13,8 +13,7 @@ const Rollbar = require("rollbar");
 const passport = require("passport");
 const connectMongo = require("connect-mongo");
 const express = require("express");
-// import { WebSocketServer } from '@clusterws/cws';
-const clusterws_uws_1 = require("clusterws-uws");
+const ws_1 = require("ws");
 const lodash_1 = require("lodash");
 const fs_extra_1 = require("fs-extra");
 const ag_sockets_1 = require("ag-sockets");
@@ -175,14 +174,14 @@ const stats = new stats_1.StatsTracker(statsPath);
 const sessionMiddlewares = lodash_1.once(() => [createSession(), passport.initialize(), passport.session()]);
 const adminMiddlewares = lodash_1.once(() => [...sessionMiddlewares(), requestUtils_1.admin(config_1.server)]);
 const socketOptionsBase = {
-    ws: { Server: clusterws_uws_1.WebSocketServer },
+    ws: { Server: ws_1.Server },
     hash: hash_1.STAMP,
 };
 requestUtils_1.initLogRequest(stats.logRequest);
 admin_accounts_1.initLogSwearingAndSpamming(stats.logSwearing, stats.logSpamming);
 const host = ag_sockets_1.createServerHost(httpServer, {
     path: config_1.args.standaloneadmin && !config_1.args.game ? '/admin/ws-admin' : config_1.server.path,
-    ws: { Server: clusterws_uws_1.WebSocketServer },
+    ws: { Server: ws_1.Server },
     perMessageDeflate: false,
     errorHandler,
 });
