@@ -6,7 +6,7 @@ const gulp = require('gulp');
 const _ = require('lodash');
 const gulpif = require('gulp-if');
 const rev = require('gulp-rev');
-const sass = require('gulp-sass');
+const sass = require('gulp-sass')(require('sass'));
 const shell = require('gulp-shell');
 const cssnano = require('gulp-cssnano');
 const imagemin = require('gulp-imagemin');
@@ -32,7 +32,7 @@ function swallowError(e) {
 }
 
 const runAsync = (command, args) => new Promise((resolve, reject) => {
-	const proc = spawn(command, args)
+	const proc = spawn(command, args, { shell: process.platform === 'win32' })
 		.on('error', reject)
 		.on('exit', resolve);
 

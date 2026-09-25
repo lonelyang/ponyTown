@@ -52,7 +52,7 @@ module.exports = {
 					},
 					{
 						loader: 'sass-loader',
-						options: { includePaths: ['src/styles'] },
+						options: { sassOptions: { includePaths: ['src/styles'] } },
 					},
 				],
 			},
