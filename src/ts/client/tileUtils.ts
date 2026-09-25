@@ -594,8 +594,8 @@ export function getTileHeight(
 	} else if (tileType === TileType.ElevatedDirt) {
 		return 0.5;
 	} else if (typeNumber === TileTypeNumber.Boat) {
-		const frame = ((gameTime / 1000) * WATER_FPS) | 0;
-		return waterHeight[frame % waterHeight.length];
+		const frame = ((gameTime / 1000) * WATER_FPS) % waterHeight.length | 0;
+		return waterHeight[frame];
 	}
 
 	return 0;

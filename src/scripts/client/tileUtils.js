@@ -517,8 +517,8 @@ function getTileHeight(tileType, tileIndex, x, y, gameTime, mapType) {
         return 0.5;
     }
     else if (typeNumber === 12 /* Boat */) {
-        const frame = ((gameTime / 1000) * constants_1.WATER_FPS) | 0;
-        return waterHeight[frame % waterHeight.length];
+        const frame = ((gameTime / 1000) * constants_1.WATER_FPS) % waterHeight.length | 0;
+        return waterHeight[frame];
     }
     return 0;
 }

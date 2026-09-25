@@ -583,7 +583,7 @@ export function updateEntities(game: PonyTownGame, gameTime: number, delta: numb
 
 		if ((flags & EntityFlags.Bobbing) !== 0) {
 			const bobs = entity.bobs!;
-			const frame = (((gameTime / 1000) * entity.bobsFps!) | 0) % bobs.length;
+			const frame = (((gameTime / 1000) * entity.bobsFps!) % bobs.length | 0);
 			entity.z = toWorldZ(bobs[frame]);
 		} else if ((flags & EntityFlags.StaticY) === 0) {
 			entity.z = getMapHeightAt(map, entity.x, entity.y, gameTime);

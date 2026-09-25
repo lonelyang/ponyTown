@@ -506,7 +506,7 @@ function updateEntities(game, gameTime, delta, safe) {
         const flags = entity.flags;
         if ((flags & 2048 /* Bobbing */) !== 0) {
             const bobs = entity.bobs;
-            const frame = (((gameTime / 1000) * entity.bobsFps) | 0) % bobs.length;
+            const frame = (((gameTime / 1000) * entity.bobsFps) % bobs.length | 0);
             entity.z = positionUtils_1.toWorldZ(bobs[frame]);
         }
         else if ((flags & 32 /* StaticY */) === 0) {
