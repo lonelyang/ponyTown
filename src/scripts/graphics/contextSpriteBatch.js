@@ -145,26 +145,7 @@ function drawRect(dst, transform, globalAlpha, color, x, y, w, h) {
 function drawImageNormal(src, dst, transform, globalAlpha, tint, sx, sy, sw, sh, dx, dy, dw, dh) {
     if (sw !== dw || sh !== dh)
         throw new Error('Different dimentions not supported');
-    if (DEVELOPMENT && !mat2d_1.isTranslation(transform)) {
-        console.error('Transform not supported');
-    }
     if (!src || !dst)
-        return;
-    dx = Math.round(dx + transform[4]);
-    dy = Math.round(dy + transform[5]);
-    let w = sw;
-    let h = sh;
-    const xx = min(0, sx, dx);
-    w += xx;
-    dx -= xx;
-    sx -= xx;
-    const yy = min(0, sy, dy);
-    h += yy;
-    dy -= yy;
-    sy -= yy;
-    w += min(0, src.width - (sx + w), dst.width - (dx + w));
-    h += min(0, src.height - (sy + h), dst.height - (dy + h));
-    if (w <= 0 && h <= 0)
         return;
     const { r, g, b, a } = color_1.colorToRGBA(tint);
     const alpha = (globalAlpha * a) | 0;
@@ -172,35 +153,19 @@ function drawImageNormal(src, dst, transform, globalAlpha, tint, sx, sy, sw, sh,
     const srcData = src.data;
     const dstWidth = dst.width | 0;
     const srcWidth = src.width | 0;
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const srcO = ((sx + x) + (sy + y) * srcWidth) << 2;
-            const sr = srcData[srcO];
-            const sg = srcData[srcO + 1];
-            const sb = srcData[srcO + 2];
-            const sa = srcData[srcO + 3];
-            const srcAlpha = blendColor(alpha, sa, 255);
-            if (srcAlpha !== 0) {
-                const rr = blendColor(r, sr, 255);
-                const gg = blendColor(g, sg, 255);
-                const bb = blendColor(b, sb, 255);
-                const dst0 = ((dx + x) + (dy + y) * dstWidth) << 2;
-                blendPrecise(dstData, dst0, rr, gg, bb, srcAlpha);
-            }
+    const drawPixel = (srcOffset, dstOffset) => {
+        const srcAlpha = blendColor(alpha, srcData[srcOffset + 3], 255);
+        if (srcAlpha !== 0) {
+            const rr = blendColor(r, srcData[srcOffset], 255);
+            const gg = blendColor(g, srcData[srcOffset + 1], 255);
+            const bb = blendColor(b, srcData[srcOffset + 2], 255);
+            blendPrecise(dstData, dstOffset, rr, gg, bb, srcAlpha);
         }
-    }
-}
-function drawImagePalette(src, dst, transform, globalAlpha, ignoreColorOption, disableShadingOption, type, tint, palette, sx, sy, sw, sh, dx, dy, dw, dh) {
-    if (sw !== dw || sh !== dh)
-        throw new Error('Different dimentions not supported');
-    if (DEVELOPMENT && !mat2d_1.isTranslation(transform)) {
-        console.error('Transform not supported');
-    }
-    if (palette === undefined) {
-        palette = graphicsUtils_1.commonPalettes.defaultPalette;
-    }
-    if (!src || !dst)
+    };
+    if (!mat2d_1.isTranslation(transform)) {
+        drawImageTransformed(src, dst, transform, sx, sy, sw, sh, dx, dy, drawPixel);
         return;
+    }
     dx = Math.round(dx + transform[4]);
     dy = Math.round(dy + transform[5]);
     let w = sw;
@@ -216,6 +181,22 @@ function drawImagePalette(src, dst, transform, globalAlpha, ignoreColorOption, d
     w += min(0, src.width - (sx + w), dst.width - (dx + w));
     h += min(0, src.height - (sy + h), dst.height - (dy + h));
     if (w <= 0 && h <= 0)
+        return;
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const srcOffset = ((sx + x) + (sy + y) * srcWidth) << 2;
+            const dstOffset = ((dx + x) + (dy + y) * dstWidth) << 2;
+            drawPixel(srcOffset, dstOffset);
+        }
+    }
+}
+function drawImagePalette(src, dst, transform, globalAlpha, ignoreColorOption, disableShadingOption, type, tint, palette, sx, sy, sw, sh, dx, dy, dw, dh) {
+    if (sw !== dw || sh !== dh)
+        throw new Error('Different dimentions not supported');
+    if (palette === undefined) {
+        palette = graphicsUtils_1.commonPalettes.defaultPalette;
+    }
+    if (!src || !dst)
         return;
     const { r, g, b, a } = color_1.colorToRGBA(tint);
     const alpha = (globalAlpha * a) | 0;
@@ -227,21 +208,91 @@ function drawImagePalette(src, dst, transform, globalAlpha, ignoreColorOption, d
     const ignoreColor = ignoreColorOption >>> 0;
     const disableShading = disableShadingOption || type > 2;
     const offset = typeOffsets[type];
+    const drawPixel = (srcOffset, dstOffset) => {
+        const index = srcData[srcOffset + offset];
+        const color = colors[index];
+        const srcAlpha = ignoreColor === color ? 0 : blendColor(color_1.getAlpha(color), alpha, 255);
+        if (srcAlpha !== 0) {
+            const shade = disableShading ? 255 : srcData[srcOffset + 1];
+            const rr = blendColor(color_1.getR(color), r, shade);
+            const gg = blendColor(color_1.getG(color), g, shade);
+            const bb = blendColor(color_1.getB(color), b, shade);
+            blendPrecise(dstData, dstOffset, rr, gg, bb, srcAlpha);
+        }
+    };
+    if (!mat2d_1.isTranslation(transform)) {
+        drawImageTransformed(src, dst, transform, sx, sy, sw, sh, dx, dy, drawPixel);
+        return;
+    }
+    dx = Math.round(dx + transform[4]);
+    dy = Math.round(dy + transform[5]);
+    let w = sw;
+    let h = sh;
+    const xx = min(0, sx, dx);
+    w += xx;
+    dx -= xx;
+    sx -= xx;
+    const yy = min(0, sy, dy);
+    h += yy;
+    dy -= yy;
+    sy -= yy;
+    w += min(0, src.width - (sx + w), dst.width - (dx + w));
+    h += min(0, src.height - (sy + h), dst.height - (dy + h));
+    if (w <= 0 && h <= 0)
+        return;
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
-            const srcO = ((sx + x) + (sy + y) * srcWidth) << 2;
-            const index = srcData[srcO + offset];
-            const color = colors[index];
-            const srcAlpha = ignoreColor === color ? 0 : blendColor(color_1.getAlpha(color), alpha, 255);
-            if (srcAlpha !== 0) {
-                const shade = disableShading ? 255 : srcData[srcO + 1];
-                const rr = blendColor(color_1.getR(color), r, shade);
-                const gg = blendColor(color_1.getG(color), g, shade);
-                const bb = blendColor(color_1.getB(color), b, shade);
-                const dst0 = ((dx + x) + (dy + y) * dstWidth) << 2;
-                blendPrecise(dstData, dst0, rr, gg, bb, srcAlpha);
-            }
+            const srcOffset = ((sx + x) + (sy + y) * srcWidth) << 2;
+            const dstOffset = ((dx + x) + (dy + y) * dstWidth) << 2;
+            drawPixel(srcOffset, dstOffset);
         }
+    }
+}
+function drawImageTransformed(src, dst, transform, sx, sy, sw, sh, dx, dy, drawPixel) {
+    const [a, b, c, d, tx, ty] = transform;
+    const determinant = a * d - b * c;
+    if (Math.abs(determinant) < 0.000001) {
+        return;
+    }
+    const x2 = dx + sw;
+    const y2 = dy + sh;
+    const corner1X = a * dx + c * dy + tx;
+    const corner2X = a * x2 + c * dy + tx;
+    const corner3X = a * dx + c * y2 + tx;
+    const corner4X = a * x2 + c * y2 + tx;
+    const corner1Y = b * dx + d * dy + ty;
+    const corner2Y = b * x2 + d * dy + ty;
+    const corner3Y = b * dx + d * y2 + ty;
+    const corner4Y = b * x2 + d * y2 + ty;
+    const minX = Math.max(0, Math.floor(Math.min(corner1X, corner2X, corner3X, corner4X)));
+    const maxX = Math.min(dst.width, Math.ceil(Math.max(corner1X, corner2X, corner3X, corner4X)));
+    const minY = Math.max(0, Math.floor(Math.min(corner1Y, corner2Y, corner3Y, corner4Y)));
+    const maxY = Math.min(dst.height, Math.ceil(Math.max(corner1Y, corner2Y, corner3Y, corner4Y)));
+    const inverseDeterminant = 1 / determinant;
+    const stepXPerX = d * inverseDeterminant;
+    const stepYPerX = -b * inverseDeterminant;
+    const stepXPerY = -c * inverseDeterminant;
+    const stepYPerY = a * inverseDeterminant;
+    const startX = minX + 0.5 - tx;
+    const startY = minY + 0.5 - ty;
+    let rowX = startX * stepXPerX + startY * stepXPerY;
+    let rowY = startX * stepYPerX + startY * stepYPerY;
+    for (let y = minY; y < maxY; y++) {
+        let localX = rowX;
+        let localY = rowY;
+        for (let x = minX; x < maxX; x++) {
+            const sourceX = Math.floor(localX - dx);
+            const sourceY = Math.floor(localY - dy);
+            if (sourceX >= 0 && sourceX < sw && sourceY >= 0 && sourceY < sh) {
+                const srcOffset = ((sx + sourceX) + (sy + sourceY) * src.width) << 2;
+                const dstOffset = (x + y * dst.width) << 2;
+                drawPixel(srcOffset, dstOffset);
+            }
+            localX += stepXPerX;
+            localY += stepYPerX;
+        }
+        rowX += stepXPerY;
+        rowY += stepYPerY;
     }
 }
 function blendColor(base, tint, shade) {
